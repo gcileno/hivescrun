@@ -85,12 +85,7 @@ export default function ProjectsContent() {
 
   return (
     <div className="animate-in fade-in duration-500">
-      {/* Header com botão */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h2 className="text-2xl font-bold text-white">Meus Projetos</h2>
-          <p className="text-zinc-400 mt-1">Crie e gerencie seus projetos</p>
-        </div>
+      <div className="mb-8 flex items-center justify-end">
         <button
           onClick={() => setShowForm(!showForm)}
           className="px-6 py-2.5 bg-[#F4B315] hover:bg-[#E59312] text-[#1A141A] rounded-lg font-semibold transition-colors"

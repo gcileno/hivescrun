@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import { HexLogo } from "../ui/HexLogo"
 import Icon from "../ui/Icon"
 
@@ -13,11 +14,14 @@ const ICONS = {
   chevron: "M19 9l-7 7-7-7"
 }
 
-export function Navbar({ active, setActive, projects = [], organizations = [] }) {
+export function Navbar({ projects = [], organizations = [] }) {
 
-  const [collapsed, setCollapsed] = useState(false)
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const [projectsOpen, setProjectsOpen] = useState(true)
-  const [organizationsOpen, setOrganizationsOpen] = useState(true)
+  const [organizationsOpen, setOrganizationsOpen] = useState(false)
+  const [selectedProject, setSelectedProject] = useState("")
 
   const projectItems = Array.isArray(projects) ? projects : []
   const organizationItems = Array.isArray(organizations) ? organizations : []
@@ -32,41 +36,37 @@ export function Navbar({ active, setActive, projects = [], organizations = [] })
     return org?.name || `Organização ${index + 1}`
   }
 
-  const isProjectActive = projectItems.some((project, index) => getProjectLabel(project, index) === active)
-  const isOrganizationActive = organizationItems.some((org, index) => getOrganizationLabel(org, index) === active)
+  const isProjectsRoute = location.pathname.startsWith("/home/projects")
+  const isOrganizationsRoute = location.pathname.startsWith("/home/organizations")
+  const isHomeRoute = location.pathname === "/home"
+  const isProjectActive = isProjectsRoute || projectItems.some((project, index) => getProjectLabel(project, index) === selectedProject)
+  const isOrganizationActive = isOrganizationsRoute || organizationItems.some((org, index) => getOrganizationLabel(org, index) === selectedProject)
 
   return (
-    <aside className={`h-screen flex flex-col transition-all duration-300 border-r border-zinc-900 bg-zinc-950 ${collapsed ? "w-20" : "w-[300px]"}`}>
-      
-      {/* HEADER - Minimalista e imponente (Visual da Imagem Escura) */}
-      <div className={`p-8 mb-6 h-28 flex items-center ${collapsed ? "justify-center px-0" : "px-8"}`}>
+    <header className="sticky top-0 z-40 border-b border-zinc-900 bg-zinc-950/95 backdrop-blur-xl">
+      <div className="flex flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-8">
         <div className="flex items-center gap-4">
-          {/* Inserção da sua Logo Hexagonal */}
           <div className="shrink-0">
             <HexLogo />
           </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <h1 className="text-xl font-bold text-white tracking-tight leading-none">HiveScrum</h1>
-              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.25em] mt-1.5">Free Edition</p>
-            </div>
-          )}
+          <div className="flex flex-col">
+            <h1 className="text-xl font-bold tracking-tight text-zinc-100 leading-none">HiveScrum</h1>
+            <p className="mt-1 text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">Free Edition</p>
+          </div>
         </div>
-      </div>
 
-      <nav className="flex-1 px-5 space-y-2">
-        {!collapsed && (
-          <p className="px-4 text-[11px] font-bold text-zinc-600 uppercase tracking-widest mb-4 mt-2">Workspace</p>
-        )}
-        
-        <NavItem icon="profile" label="profile" active={active === "profile"} onClick={() => setActive("profile")} collapsed={collapsed} />
-        
-        {/* Projetos Integrados - Visual High-End */}
-        <div className="flex flex-col">
-          <NavItem icon="projects" label="Projetos Ativos" active={isProjectActive} onClick={() => !collapsed && setProjectsOpen(!projectsOpen)} collapsed={collapsed} hasSub={!collapsed} isOpen={projectsOpen} />
-          
-          {!collapsed && projectsOpen && (
-            <div className="mt-2 space-y-1.5 transition-all">
+        <nav className="flex flex-wrap items-center gap-2 lg:justify-center">
+          <NavItem icon="profile" label="Profile" active={isHomeRoute} onClick={() => navigate("/home")} compact />
+
+          <DropdownNavItem
+            icon="projects"
+            label="Projects"
+            active={isProjectActive}
+            isOpen={projectsOpen}
+            onToggle={() => setProjectsOpen((current) => !current)}
+            compact
+          >
+            <DropdownPanel>
               {projectItems.length > 0 ? (
                 projectItems.map((project, index) => {
                   const label = getProjectLabel(project, index)
@@ -76,99 +76,140 @@ export function Navbar({ active, setActive, projects = [], organizations = [] })
                     <SubItem
                       key={key}
                       label={label}
-                      active={active === label}
-                      onClick={() => setActive(label)}
+                      active={selectedProject === label}
+                      onClick={() => {
+                        setSelectedProject(label)
+                        navigate("/home/projects")
+                        setProjectsOpen(false)
+                      }}
                     />
                   )
                 })
               ) : (
-                <SubItem label="Sem projetos" active={false} onClick={() => {}} />
+                <div className="px-3 py-2 text-sm text-zinc-500">Sem projetos</div>
               )}
-            </div>
-          )}
-        </div>
+            </DropdownPanel>
+          </DropdownNavItem>
 
-        {/* Organizations do usuário logado - Visual High-End */}
-        <div className="flex flex-col">
-          <NavItem icon="organizations" label="Organizations" active={isOrganizationActive} onClick={() => !collapsed && setOrganizationsOpen(!organizationsOpen)} collapsed={collapsed} hasSub={!collapsed} isOpen={organizationsOpen} />
-          
-          {!collapsed && organizationsOpen && (
-            <div className="mt-2 space-y-1.5 transition-all">
-              {organizationItems.length > 0 ? (
-                organizationItems.map((org, index) => {
-                  const label = getOrganizationLabel(org, index)
-                  const key = typeof org === "object" && org?.id != null ? org.id : `${label}-${index}`
+          <DropdownNavItem
+            icon="organizations"
+            label="Organizations"
+            active={isOrganizationActive}
+            isOpen={organizationsOpen}
+            onToggle={() => setOrganizationsOpen((current) => !current)}
+            compact
+          >
+            <DropdownPanel>
+              <SubItem
+                label="Abrir organizações"
+                active={isOrganizationsRoute}
+                onClick={() => {
+                  navigate("/home/organizations")
+                  setOrganizationsOpen(false)
+                }}
+              />
+              {organizationItems.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {organizationItems.slice(0, 5).map((org, index) => {
+                    const label = getOrganizationLabel(org, index)
+                    const key = typeof org === "object" && org?.id != null ? org.id : `${label}-${index}`
 
-                  return (
-                    <SubItem
-                      key={key}
-                      label={label}
-                      active={active === label}
-                      onClick={() => setActive(label)}
-                    />
-                  )
-                })
-              ) : (
-                <SubItem label="Sem organizações" active={false} onClick={() => {}} />
+                    return (
+                      <SubItem
+                        key={key}
+                        label={label}
+                        active={selectedProject === label}
+                        onClick={() => {
+                          setSelectedProject(label)
+                          navigate("/home/organizations")
+                          setOrganizationsOpen(false)
+                        }}
+                      />
+                    )
+                  })}
+                </div>
               )}
-            </div>
-          )}
+            </DropdownPanel>
+          </DropdownNavItem>
+
+          <NavItem icon="sprints" label="Sprints" active={false} onClick={() => {}} compact />
+          <NavItem icon="tasks" label="Tasks" active={false} onClick={() => {}} compact />
+          <NavItem icon="team" label="Team" active={false} onClick={() => {}} compact />
+        </nav>
+
+        <div className="flex items-center gap-3 self-start lg:self-auto">
+          <NavItem icon="settings" label="Settings" active={false} onClick={() => {}} compact />
+          <button
+            type="button"
+            className="h-10 w-10 rounded-full border border-zinc-800 bg-zinc-900 text-zinc-200 transition-colors hover:border-zinc-700 hover:bg-zinc-800"
+            aria-label="Perfil do usuário"
+          >
+            {location.pathname.startsWith("/home") ? "HS" : ""}
+          </button>
         </div>
-
-        <NavItem icon="sprints" label="Sprints" active={active === "sprints"} onClick={() => setActive("sprints")} collapsed={collapsed} />
-        <NavItem icon="tasks" label="Minhas Tarefas" active={active === "tasks"} onClick={() => setActive("tasks")} collapsed={collapsed} />
-        <NavItem icon="team" label="Membros do Time" active={active === "team"} onClick={() => setActive("team")} collapsed={collapsed} />
-      </nav>
-
-      {/* FOOTER */}
-      <div className="p-6 border-t border-zinc-900 bg-zinc-900/10">
-        <NavItem icon="settings" label="Configurações" active={active === "settings"} onClick={() => setActive("settings")} collapsed={collapsed} />
-        
-        <button onClick={() => setCollapsed(!collapsed)} className="flex items-center justify-center w-10 h-10 mx-auto mt-3 rounded-xl hover:bg-zinc-900 text-zinc-600 hover:text-active transition-colors">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d={collapsed ? "M9 18l6-6-6-6" : "M15 18l-6-6 6-6"} />
-          </svg>
-        </button>
       </div>
-    </aside>
+    </header>
   )
 }
 
-function NavItem({ icon, label, active, onClick, collapsed, hasSub, isOpen }) {
+function NavItem({ icon, label, active, onClick, compact = false }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`group w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 relative
-      ${collapsed ? "justify-center" : "justify-between"}
-      ${active ? "bg-zinc-900 text-active" : "text-zinc-500 hover:bg-zinc-900/60 hover:text-zinc-100"}`}
+      className={`group inline-flex items-center gap-3 rounded-2xl border px-4 py-2.5 text-sm transition-all duration-300 ${
+        compact ? 'min-w-max' : 'w-full justify-between'
+      } ${active ? 'border-zinc-700 bg-zinc-900 text-zinc-100' : 'border-zinc-800 bg-zinc-950 text-zinc-500 hover:border-zinc-700 hover:bg-zinc-900/60 hover:text-zinc-100'}`}
     >
       <div className="flex items-center gap-4">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={active ? "text-active shadow-[0_0_10px_rgba(0,246,255,0.4)]" : "text-zinc-600 group-hover:text-zinc-400"}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-100" : "text-zinc-600 group-hover:text-zinc-400"}>
           <path d={ICONS[icon]} />
         </svg>
         
-        {!collapsed && (
-          <span className={`text-[15px] tracking-tight ${active ? "font-bold" : "font-medium"}`}>{label}</span>
-        )}
+        <span className={`tracking-tight ${active ? "font-bold text-zinc-100" : "font-medium"}`}>{label}</span>
       </div>
-
-      {!collapsed && hasSub && (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform text-zinc-600 group-hover:text-zinc-400 ${isOpen ? "rotate-180" : ""}`}>
-          <path d={ICONS.chevron} />
-        </svg>
-      )}
-
-      {/* Indicador lateral sutil da imagem */}
-      {active && !collapsed && (
-        <div className="absolute right-4 w-1 h-1 rounded-full bg-active shadow-[0_0_10px_rgba(0,246,255,0.8)]" />
-      )}
     </button>
   )
 }
 
+function DropdownNavItem({ icon, label, active, isOpen, onToggle, children, compact = false }) {
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`group inline-flex items-center gap-3 rounded-2xl border px-4 py-2.5 text-sm transition-all duration-300 ${
+          compact ? 'min-w-max' : 'w-full justify-between'
+        } ${active ? 'border-zinc-700 bg-zinc-900 text-zinc-100' : 'border-zinc-800 bg-zinc-950 text-zinc-500 hover:border-zinc-700 hover:bg-zinc-900/60 hover:text-zinc-100'}`}
+      >
+        <div className="flex items-center gap-3">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-100" : "text-zinc-600 group-hover:text-zinc-400"}>
+            <path d={ICONS[icon]} />
+          </svg>
+          <span className={`tracking-tight ${active ? "font-bold text-zinc-100" : "font-medium"}`}>{label}</span>
+        </div>
+
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform text-zinc-600 group-hover:text-zinc-400 ${isOpen ? "rotate-180" : ""}`}>
+          <path d={ICONS.chevron} />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-[calc(100%+10px)] z-50 w-72 rounded-2xl border border-zinc-800 bg-zinc-950 p-3 shadow-2xl shadow-black/40">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DropdownPanel({ children }) {
+  return <div className="space-y-2">{children}</div>
+}
+
 function SubItem({ label, active, onClick }) {
   return (
-    <button onClick={onClick} className={`w-full py-2.5 px-4 rounded-xl text-[14px] transition-all flex items-center justify-between ${active ? "bg-zinc-900 text-white font-bold" : "text-zinc-500 hover:text-zinc-100 hover:bg-zinc-900/30"}`}>
+    <button type="button" onClick={onClick} className={`w-full rounded-xl px-4 py-2.5 text-left text-sm transition-all flex items-center justify-between ${active ? "bg-zinc-900 text-zinc-100 font-bold" : "text-zinc-500 hover:text-zinc-100 hover:bg-zinc-900/30"}`}>
       {label}
       {active && <Icon d={ICONS.projects} size={14} />}
     </button>
